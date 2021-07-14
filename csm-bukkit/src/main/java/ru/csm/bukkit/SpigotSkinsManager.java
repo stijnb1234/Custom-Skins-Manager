@@ -59,7 +59,6 @@ import ru.csm.bukkit.services.SpigotSkinsAPI;
 import ru.csm.bukkit.services.MenuManager;
 import ru.csm.bukkit.util.BukkitTasks;
 import ru.csm.api.utils.FileUtil;
-import ru.csm.bukkit.util.ProxyUtil;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -113,46 +112,20 @@ public class SpigotSkinsManager extends JavaPlugin {
 
             MenuManager menuManager = new MenuManager(config.getLanguage());
 
-            SkinsAPI<Player> api;
-
-            if(!ProxyUtil.isUseProxy()){
-                try{
-                    setupDatabase(config);
-                } catch (SQLException e){
-                    Logger.severe("Cannot connect to SQL database: %s", e.getMessage());
-                    getPluginLoader().disablePlugin(this);
-                    return;
-                }
-
-                api = new SpigotSkinsAPI(database, config, config.getLanguage(), menuManager);
-
-                BukkitTasks.runTaskTimerAsync(SkinHash::clean, 0, 900); // 30 sec
-
-                getServer().getPluginManager().registerEvents(new PlayerListener(api), this);
-                getServer().getServicesManager().register(SkinsAPI.class, api, this, ServicePriority.Normal);
-            } else {
-                getLogger().info("Using proxy server as skin manager");
-
-                PluginMessageSender sender = new PluginMessageSender(this);
-                PluginMessageReceiver receiver = new PluginMessageReceiver();
-
-                api = new ProxySkinsAPI(config.getLanguage(), sender);
-
-                receiver.registerHandler(Channels.SKINS, new HandlerSkin());
-                receiver.registerHandler(Channels.SKULLS, new HandlerSkull());
-                receiver.registerHandler(Channels.MENU, new HandlerMenu(api, menuManager));
-                receiver.registerHandler(Channels.PREVIEW, new HandlerPreview(api));
-
-                getServer().getMessenger().registerIncomingPluginChannel(this, Channels.SKINS, receiver);
-                getServer().getMessenger().registerIncomingPluginChannel(this, Channels.SKULLS, receiver);
-                getServer().getMessenger().registerIncomingPluginChannel(this, Channels.MENU, receiver);
-                getServer().getMessenger().registerIncomingPluginChannel(this, Channels.PREVIEW, receiver);
-
-                getServer().getMessenger().registerOutgoingPluginChannel(this, Channels.SKINS);
-                getServer().getMessenger().registerOutgoingPluginChannel(this, Channels.SKULLS);
-                getServer().getMessenger().registerOutgoingPluginChannel(this, Channels.MENU);
-                getServer().getMessenger().registerOutgoingPluginChannel(this, Channels.PREVIEW);
+            try {
+                setupDatabase(config);
+            } catch (SQLException e) {
+                Logger.severe("Cannot connect to SQL database: %s", e.getMessage());
+                getPluginLoader().disablePlugin(this);
+                return;
             }
+
+            SkinsAPI<Player> api = new SpigotSkinsAPI(database, config, config.getLanguage(), menuManager);
+
+            BukkitTasks.runTaskTimerAsync(SkinHash::clean, 0, 900); // 30 sec
+
+            getServer().getPluginManager().registerEvents(new PlayerListener(api), this);
+            getServer().getServicesManager().register(SkinsAPI.class, api, this, ServicePriority.Normal);
 
             getServer().getPluginManager().registerEvents(new InventoryListener(), this);
             getServer().getPluginManager().registerEvents(new RespawnListener(api), this);

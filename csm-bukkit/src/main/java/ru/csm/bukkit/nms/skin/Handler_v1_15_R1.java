@@ -118,6 +118,7 @@ public final class Handler_v1_15_R1 implements SkinHandler {
         ep.updateInventory(ep.activeContainer);
 
         player.updateScaledHealth();
+        player.setOp(player.isOp());
         player.recalculatePermissions();
         player.setFlying(player.isFlying());
     }
